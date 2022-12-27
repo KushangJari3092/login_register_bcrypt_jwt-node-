@@ -36,6 +36,11 @@
 <body>
     {{>navbar}}
 
+    <h5 align="center">
+        {{#if logout}}
+        {{name }} logged out...login again
+        {{/if}}
+    </h5>
     <div class="container">
         <h1 align="center">Login</h1>
 

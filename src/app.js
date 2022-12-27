@@ -5,6 +5,8 @@ const path = require('path')
 const hbs = require('hbs')
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs')
+const cookieParser = require('cookie-parser');
+const auth = require('./middleware/auth')
 const port = process.env.PORT || 5000;
 
 require('./db/conn');
@@ -16,6 +18,7 @@ hbs.registerPartials(partialsPath)
 exp.set("view engine", "hbs");
 
 //to get submitted data in form similar to exp.use(express.json()) in case of postman
+exp.use(cookieParser());
 exp.use(express.urlencoded({ extended: false }))
 
 exp.get('/', (req, res) => {
@@ -26,6 +29,28 @@ exp.get('/register', (req, res) => {
 })
 exp.get('/login', (req, res) => {
     res.render("login")
+})
+exp.get('/secret', auth, (req, res) => {
+    res.render("secret", { name: req.user.name })
+})
+exp.get('/logout', auth, async (req, res) => {
+    try {
+        //to logout user from particular device using particular token.
+        // req.user.tokens = req.user.tokens.filter((e) => {
+        //     return e.token != req.token
+        // })
+
+        // logout from all device
+        req.user.tokens = []
+
+        res.clearCookie("jwtl")
+        console.log("logout done");
+        await req.user.save();
+        // prompt("logged out");
+        res.render("login", { logout: true, name: req.user.name })
+    } catch (err) {
+        res.status(500).send(err)
+    }
 })
 
 //inserting
@@ -46,10 +71,15 @@ exp.post('/register', async (req, res) => {
                 hashPassword: req.body.password,
             })
 
+            //(encrypt password -> create hash)=> in registration.js ->  then save
+
             const token = await emp.generateAuthToken();
             console.log('token :>> ', token);
 
-            //(encrypt password -> create hash)=> in registration.js ->  then save
+            res.cookie("jwtr", token, {
+                expires: new Date(Date.now() + 300000),
+                httpOnly: true,
+            });
 
             const result = await emp.save();
             res.send(result)
@@ -75,7 +105,12 @@ exp.post('/login', async (req, res) => {
         // console.log('user.password', user.password)
 
         const token = await user.generateAuthToken();
-        console.log('token :>> ', token);
+        // console.log('token :>> ', token);
+
+        res.cookie("jwtl", token, {
+            expires: new Date(Date.now() + 300000),
+            httpOnly: true,
+        });
 
         if (isMatch) {
             res.render("index", { success: 1, name: user.name })
@@ -93,3 +128,7 @@ exp.post('/login', async (req, res) => {
 exp.listen(port, () => {
     console.log(`running on port ${port}`)
 });
+
+
+
+
